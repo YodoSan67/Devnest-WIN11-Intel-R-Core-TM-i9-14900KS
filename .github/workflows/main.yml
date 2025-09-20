@@ -1,34 +1,72 @@
-name: 'Deploy Windows Environment'
+name: '🖥️ Deploy Windows Environment 🚀'
 
 on:
   workflow_dispatch:
     inputs:
       GIST_URL:
-        description: 'https://gist.githubusercontent.com/ditzz-dev/ea7d0ddc8b8e1a46f98bf9117faf99e2/raw/b0804ba3c6625e3c2eaeb6074e633878f68d8baf/setup-windows.ps1'
+        description: 'URL skrip PowerShell mentah (contoh: dari Gist)'
         required: true
+        default: 'https://gist.githubusercontent.com/ditzz-dev/ea7d0ddc8b8e1a46f98bf9117faf99e2/raw/b0804ba3c6625e3c2eaeb6074e633878f68d8baf/setup-windows.ps1'
 
 jobs:
-  build:
+  validate_and_prepare:
+    name: '🧐 Fase 1: Validasi & Persiapan Sistem'
+    runs-on: windows-11-arm
+    
+    steps:
+      - name: '🏁 Memulai Proses Deployment'
+        run: Write-Host "🚀 Proses deployment Lingkungan Windows dimulai..."
+        shell: powershell
+
+      - name: '🔗 Memvalidasi Input Gist URL'
+        shell: powershell
+        run: |
+          if (-not "${{ github.event.inputs.GIST_URL }}") {
+            Write-Error "❌ FATAL: Harap berikan Gist URL untuk menjalankan alur kerja ini."
+            exit 1
+          }
+          Write-Host "✅ Gist URL terdeteksi."
+
+      - name: '🔑 Memvalidasi Secret NGROK'
+        shell: powershell
+        run: |
+          if (-not "${{ secrets.NGROK_AUTH_TOKEN }}") {
+            Write-Error "❌ FATAL: Secret 'NGROK_AUTH_TOKEN' tidak ditemukan. Harap atur di Pengaturan > Secrets repositori."
+            exit 1
+          }
+          Write-Host "✅ Secret NGROK_AUTH_TOKEN ditemukan."
+          
+      - name: '📥 Mengunduh Skrip Master dari Gist'
+        shell: powershell
+        run: |
+          Write-Host "☁️  Mengunduh skrip master dari Gist..."
+          Invoke-WebRequest -Uri "${{ github.event.inputs.GIST_URL }}" -OutFile "setup.ps1"
+          Write-Host "💾 Skrip master berhasil disimpan sebagai 'setup.ps1'."
+
+      - name: '📦 Mengemas Skrip sebagai Artefak'
+        uses: actions/upload-artifact@v4
+        with:
+          name: setup-script-artifact
+          path: setup.ps1
+
+  execute_deployment:
+    name: '⚡ Fase 2: Eksekusi & Aktivasi'
+    needs: validate_and_prepare
     runs-on: windows-11-arm
     timeout-minutes: 360
     
     steps:
-      - name: '📥 Download Master Script'
-        shell: powershell
-        run: |
-          if (-not "${{ github.event.inputs.GIST_URL }}") {
-            Write-Error "FATAL: Please provide a Gist URL to run this workflow."
-            exit 1
-          }
-          Write-Host "-> Downloading master script from Gist..."
-          Invoke-WebRequest -Uri "${{ github.event.inputs.GIST_URL }}" -OutFile "setup.ps1"
+      - name: '📦 Membuka Paket Artefak Skrip'
+        uses: actions/download-artifact@v4
+        with:
+          name: setup-script-artifact
 
-      - name: '🚀 Execute RDP Deployment Script'
+      - name: '⚙️ Menjalankan Skrip Deployment Windows'
         shell: powershell
         run: |
-          if (-not "${{ secrets.NGROK_AUTH_TOKEN }}") {
-            Write-Error "FATAL: Secret 'NGROK_AUTH_TOKEN' not found. Please set it in repository Settings > Secrets."
-            exit 1
-          }
-          Write-Host "-> Secret validated. Executing deployment script..."
+          Write-Host "▶️  Memulai eksekusi skrip 'setup.ps1'..."
           .\setup.ps1 -NgrokAuthToken "${{ secrets.NGROK_AUTH_TOKEN }}"
+          
+      - name: '🎉 Deployment Selesai & Lingkungan Aktif'
+        run: Write-Host "✅ Lingkungan Windows Anda telah berhasil di-deploy dan siap digunakan!"
+        shell: powershell
