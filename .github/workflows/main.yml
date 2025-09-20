@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       GIST_URL:
-        description: 'URL RAW dari skrip PowerShell Gist Anda'
+        description: 'https://gist.githubusercontent.com/ditzz-dev/ea7d0ddc8b8e1a46f98bf9117faf99e2/raw/b0804ba3c6625e3c2eaeb6074e633878f68d8baf/setup-windows.ps1'
         required: true
 
 jobs:
